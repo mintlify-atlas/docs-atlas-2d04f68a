@@ -1,0 +1,57 @@
+{
+  "projectType": "frontend",
+  "projectName": "ColorMe",
+  "projectDescription": "A browser extension that lets you customize your browser's theme color using an interactive color wheel, with support for day/night modes and saved color palettes.",
+  "theme": "almond",
+  "primaryColor": "#0665fc",
+  "lightColor": "#7cb4fc",
+  "darkColor": "#04a4ec",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "installation", "quickstart"]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/using-the-color-wheel",
+              "guides/day-night-mode",
+              "guides/saving-colors",
+              "guides/browser-support"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/project-structure",
+              "development/building",
+              "development/contributing"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive color wheel for real-time browser theme customization",
+    "Day and night mode toggle for light and dark themes",
+    "Save and reuse custom color swatches",
+    "Cross-browser support (Firefox, Chrome, Opera, Edge)",
+    "Persistent color preferences via browser storage",
+    "Live reload during development"
+  ],
+  "publicApiSurface": [
+    "themes - theme object storing day/night color configurations",
+    "setTheme(theme, value, mode) - apply a color to the current browser theme",
+    "updateColor(theme, value, mode) - update the stored color for a given mode",
+    "changeMode(theme, mode) - switch between day and night mode",
+    "sendMessage(msg, options) - send a message to the background script",
+    "sendMessageToTab(tab, msg, options) - send a message to a specific tab's content script",
+    "sendMessageToActiveTab(msg, options) - send a message to the currently active tab",
+    "CHANGE_COLOR message type - message type for changing page background color"
+  ]
+}
