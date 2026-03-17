@@ -108,7 +108,7 @@ description: "How to set up a dev environment and contribute to ColorMe"
 ### ESLint
 
 <Note>
-  The project uses `eslint-config-airbnb` as the base ruleset, extended with `@typescript-eslint` for TypeScript-aware rules and `eslint-config-prettier` to disable any formatting rules that conflict with Prettier. `eslint-plugin-prettier` surfaces Prettier violations as ESLint errors.
+  The project extends `react-app` as its ESLint base. The `chrome` global is declared as `readonly` so ESLint does not flag `chrome.*` API calls as undefined. Additional TypeScript-aware packages (`@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`) and formatting packages (`eslint-config-prettier`, `eslint-plugin-prettier`) are installed as devDependencies and can be configured by extending `.eslintrc`.
 </Note>
 
 ```json .eslintrc
@@ -154,11 +154,13 @@ The project targets ES2017 with strict null checking and implicit-any errors ena
     "noImplicitThis": true,
     "target": "es2017",
     "module": "commonjs",
+    "allowJs": true,
     "jsx": "react",
     "baseUrl": "./src",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "allowUmdGlobalAccess": true,
     "resolveJsonModule": true,
     "sourceMap": true,
     "typeRoots": ["node_modules/@types", "./src/types"]
@@ -170,6 +172,8 @@ The project targets ES2017 with strict null checking and implicit-any errors ena
 Key points:
 
 - **`noImplicitAny`** and **`strictNullChecks`** are both `true` — every value must be explicitly typed or inferable; `null` and `undefined` are not assignable to other types without a check.
+- **`allowJs: true`** lets the compiler process plain JavaScript files alongside TypeScript.
+- **`allowUmdGlobalAccess: true`** permits referencing UMD globals from module files without an explicit import.
 - **`baseUrl: "./src"`** combined with the `paths` map lets you write `import storage from 'utils/storage'` instead of a relative path.
 - The `src/types/` directory is included in `typeRoots`, making `EXTMessage`, `EXTResponse`, and other ambient declarations available globally without an explicit import.
 - The `dist/`, `dev/`, and `temp/` output directories are excluded from compilation.

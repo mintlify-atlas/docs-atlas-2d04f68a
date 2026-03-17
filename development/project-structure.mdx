@@ -242,7 +242,7 @@ Each browser target has its own manifest base file under `src/`. Webpack picks t
 | `baseManifest_edge.json` | Edge | — | — |
 
 <Note>
-Only Chrome and Firefox manifests are in this repository. Opera and Edge manifests follow the same pattern but are generated during the build.
+  All four manifest base files (`baseManifest_chrome.json`, `baseManifest_firefox.json`, `baseManifest_opera.json`, `baseManifest_edge.json`) are committed to the repository under `src/`. Webpack selects the correct one at build time via the `TARGET` environment variable.
 </Note>
 
 ## Path aliases
