@@ -1,80 +1,81 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get ColorMe running and pick your first color in under 5 minutes"
 ---
 
-## Get started in three steps
+This guide walks you through cloning, building, and loading ColorMe in Firefox so you can pick your first color immediately. Firefox is used here because it is the only browser with full theme support via the `browser.theme.update()` API.
 
-Get your documentation site running locally and make your first customization.
+<Steps>
+  <Step title="Clone the repository and install dependencies">
+    ```bash
+    git clone https://github.com/ehcaw/colorme.git
+    cd colorme
+    ```
 
-### Step 1: Set up your local environment
+    <CodeGroup>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash npm
+    npm install
+    ```
 
-### Step 2: Deploy your changes
+    ```bash yarn
+    yarn install
+    ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    </CodeGroup>
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Build for Firefox">
+    <CodeGroup>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash npm
+    npm run build:firefox
+    ```
 
-### Step 3: Go live
+    ```bash yarn
+    yarn build:firefox
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    </CodeGroup>
 
-## Next steps
+    Webpack compiles the extension into the `dev/firefox/` directory. You should see output files including `manifest.json`, `popup/index.html`, and `background/background.js`.
+  </Step>
 
-Now that you have your docs running, explore these key features:
+  <Step title="Load the extension in Firefox">
+    1. In the Firefox address bar, navigate to `about:debugging`.
+    2. Click **This Firefox** in the left sidebar.
+    3. Click **Load Temporary Add-on...**
+    4. Navigate to `colorme/dev/firefox` and select `manifest.json`.
 
-<CardGroup cols={2}>
+    The ColorMe icon appears in the Firefox toolbar.
+  </Step>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Step title="Open the ColorMe popup">
+    Click the ColorMe icon in the Firefox toolbar. The popup opens showing the color wheel, the current hex value, and the day/night toggle.
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+    On first load, the popup reads the saved `mode` from extension storage and defaults to `day` (frame color `#ffffff`) if no prior state is found.
+  </Step>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+  <Step title="Pick a color">
+    Drag anywhere on the color wheel to select a hue, or drag toward the center to adjust saturation and lightness. The hex value displayed below the wheel updates in real time.
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+    As soon as you release the drag, `browser.theme.update()` fires and the Firefox frame (toolbar, tab bar, and sidebar) immediately changes to the selected color — no page reload needed.
+  </Step>
 
-</CardGroup>
+  <Step title="Toggle day / night mode">
+    Click the toggle switch at the bottom of the popup to switch between **light** and **dark** modes. Each mode stores its own independent frame color:
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+    - **Day (light)**: defaults to `#ffffff`
+    - **Night (dark)**: defaults to `#000000`
+
+    The active mode is persisted in extension storage and restored the next time the popup opens.
+  </Step>
+
+  <Step title="Save a color swatch">
+    With the color you want displayed in the hex field, click the **+** button next to the toggle. ColorMe appends the hex value to your saved colors list in extension storage. Saved swatches appear in the `ColorTable` grid inside the popup and can be reapplied at any time.
+  </Step>
+</Steps>
+
+<Tip>
+  Check the Guides section for deeper features including live reload during development (`yarn dev:firefox`), building for Chrome and Opera, and packaging a production-ready zip for the browser extension store.
+</Tip>

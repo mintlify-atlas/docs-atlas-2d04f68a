@@ -1,0 +1,117 @@
+---
+title: "Using the color wheel"
+description: "Pick any color with the interactive HSL color wheel"
+---
+
+The ColorMe popup centers on an interactive HSL color wheel powered by the [`reinvented-color-wheel`](https://github.com/luncheon/reinvented-color-wheel) library. Drag the handle to choose any color and watch your browser frame update instantly.
+
+## How the wheel works
+
+The wheel is rendered via the `ReinventedColorWheel` React component. ColorMe mounts it with the following fixed configuration:
+
+```tsx Popup.tsx
+import ReinventedColorWheel from 'reinvented-color-wheel/react';
+import 'reinvented-color-wheel/css/reinvented-color-wheel.min.css';
+
+<ReinventedColorWheel
+  hex={hex}
+  wheelDiameter={300}
+  wheelThickness={20}
+  handleDiameter={16}
+  wheelReflectsSaturation
+  onChange={({ hex }) => {
+    setHex(hex);
+  }}
+/>
+```
+
+| Prop | Value | Effect |
+|------|-------|--------|
+| `wheelDiameter` | `300` | Outer diameter of the ring in pixels |
+| `wheelThickness` | `20` | Thickness of the color ring in pixels |
+| `handleDiameter` | `16` | Size of the draggable handle in pixels |
+| `wheelReflectsSaturation` | `true` | Ring visually fades toward grey as saturation decreases |
+
+## Interacting with the wheel
+
+<Steps>
+  <Step title="Open the ColorMe popup">
+    Click the ColorMe icon in your browser toolbar. The wheel loads pre-filled with the color last saved for the current mode (day or night).
+  </Step>
+  <Step title="Drag the handle">
+    Click and drag the circular handle around the outer ring. Moving it changes both hue (angular position) and saturation (radial position) simultaneously.
+  </Step>
+  <Step title="Watch the frame update">
+    As you drag, `onChange` fires with the new hex value. A `useEffect` hook calls `setTheme(themes, hex, mode)`, which calls `browser.theme.update(theme[mode])` so the browser frame color changes in real time — no save step required.
+  </Step>
+  <Step title="Read the hex value">
+    The current hex code is displayed beneath the wheel at all times.
+  </Step>
+</Steps>
+
+## Hex display
+
+<Note>
+  The selected color is always shown as a six-character hex string directly below the wheel:
+
+  ```tsx
+  <p className="display-hex">Hex: {hex}</p>
+  ```
+
+  The popup body background is also updated to match: `document.body.style.backgroundColor = value` (called inside `setTheme`). This lets you preview the chosen color as the popup's own background before committing it.
+</Note>
+
+## Initial color on popup open
+
+When the popup first opens, ColorMe reads the saved mode from browser storage and restores the corresponding color:
+
+```tsx Popup.tsx
+const fetchMode = async () => {
+  const result = await storage.get('mode');
+  const fetchedMode = result.mode || 'day'; // defaults to 'day' if nothing is stored
+  setHex((themes[fetchedMode] as any).colors.frame || '#FFFFFF');
+  setMode(fetchedMode);
+  document.body.style.backgroundColor = (themes[fetchedMode] as any).colors.frame;
+};
+```
+
+The `themes` object seeds its initial values from `localStorage` at extension load time. The day slot defaults to `#ffffff` (white) and the night slot defaults to an empty string that resolves to `#000000` (black) when no saved value exists.
+
+## Text readability — automatic color flip
+
+<Info>
+  When you select a very dark color, all text and UI labels in the popup (title, hex display, mode label, swatch borders) automatically switch from black to white so they remain legible. The mechanism works as follows:
+
+  1. The current hex is converted to CMYK using the internal `hex2cmyk` helper.
+  2. The CMYK `k` channel ("key", i.e. darkness) is compared against a threshold of `51`.
+  3. If `k > 51`, the CSS custom property `--flip-color` is set to `white`; otherwise it stays `black`.
+
+  ```tsx Popup.tsx
+  useEffect(() => {
+    if (hex == '#000000') {
+      document.documentElement.style.setProperty('--flip-color', 'white');
+      return;
+    }
+    let cmyk = hex2cmyk(hex);
+    if (typeof cmyk !== 'undefined') {
+      if (cmyk['k'] > 51) {
+        document.documentElement.style.setProperty('--flip-color', 'white');
+      } else {
+        document.documentElement.style.setProperty('--flip-color', 'black');
+      }
+    }
+  }, [hex]);
+  ```
+
+  The CSS variable is declared in `popup.css` and consumed by `.app-name`, `.display-hex`, `.display-light-dark`, and `.savedColors`:
+
+  ```css popup.css
+  :root {
+    --flip-color: black;
+  }
+
+  .app-name      { color: var(--flip-color); }
+  .display-hex   { color: var(--flip-color); }
+  .savedColors   { border: 2px solid var(--flip-color); }
+  ```
+</Info>

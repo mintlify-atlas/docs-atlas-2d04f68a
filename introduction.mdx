@@ -1,0 +1,94 @@
+---
+title: "Introduction"
+description: "What ColorMe is and how it works"
+---
+
+ColorMe is a browser extension that lets you customize your browser's frame and toolbar color using an interactive color wheel. Pick any hex color, toggle between a day and night theme, and save swatches for colors you want to reuse — all from a compact popup. Changes take effect immediately without reloading the browser.
+
+<Note>
+  Firefox is the primary supported browser and has the richest theme support. The Firefox manifest includes the `theme` permission, which grants access to `browser.theme.update()` — the API that drives live color changes. Chrome, Opera, and Edge builds are available but have not been fully tested.
+</Note>
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Interactive color wheel" icon="palette">
+    A 300 px `ReinventedColorWheel` component lets you drag to any hue, saturation, and lightness. The selected hex value is shown below the wheel and applied to the browser frame the moment you release.
+  </Card>
+  <Card title="Day / night mode" icon="moon">
+    A toggle switch flips between two independently stored theme colors — one for day (light) and one for night (dark). The active mode and its frame color are persisted in extension storage so they survive browser restarts.
+  </Card>
+  <Card title="Saved color swatches" icon="swatchbook">
+    Click the **+** button to append the current hex value to a swatch list stored in extension storage. Swatches are displayed in the `ColorTable` component inside the popup and can be reapplied with a single click.
+  </Card>
+  <Card title="Cross-browser support" icon="globe">
+    Webpack builds target `chrome`, `firefox`, `opera`, and `edge` via the `TARGET` environment variable. A shared `webextension-polyfill` layer smooths over browser API differences so a single TypeScript codebase drives all targets.
+  </Card>
+</CardGroup>
+
+## Technology stack
+
+ColorMe is built with the following libraries and tools:
+
+| Layer | Technology |
+|---|---|
+| UI framework | React 18.2 (`react`, `react-dom`) |
+| Language | TypeScript 5.2 |
+| Bundler | Webpack 5.91 |
+| Browser API shim | `webextension-polyfill` 0.10 / `webextension-polyfill-ts` 0.26 |
+| Color picker | `reinvented-color-wheel` 0.4 |
+| Styling | Sass / CSS Modules |
+| Linting | ESLint with `@typescript-eslint` and Airbnb config |
+
+## Extension architecture
+
+ColorMe follows the standard Manifest V3 extension layout. Here is how the pieces fit together:
+
+```
+colorme/
+├── popup/          # React UI — Popup.tsx + background_script.ts
+├── background/     # Background service worker (Chrome) or background script (Firefox)
+├── content/        # Content script injected into every http/https page
+└── options/        # Options page (index.html)
+```
+
+### Color flow
+
+1. The user drags the `ReinventedColorWheel` inside the popup. The `onChange` handler fires and calls `setHex(hex)`.
+2. A `useEffect` watching `hex` calls `setTheme(themes, hex, mode)` in `background_script.ts`.
+3. `setTheme` calls `updateColor` to write the new value into the in-memory `themes` object, then calls `browser.theme.update(theme[mode])` which immediately repaints the browser chrome.
+4. The hex is also written to `localStorage` so it persists across popup open/close cycles.
+
+### Storage
+
+The extension uses two storage mechanisms:
+
+- **`localStorage`** (via `background_script.ts`) — stores the current `day` and `night` frame colors and the active `mode` key.
+- **`browser.storage`** (via the `storage` utility) — stores the serialized `savedColors` array and the current `mode` for cross-context access.
+
+### Manifest permissions
+
+**Firefox** (`baseManifest_firefox.json`):
+```json
+"permissions": ["tabs", "storage", "theme"]
+```
+
+**Chrome / Opera / Edge** (`baseManifest_chrome.json`):
+```json
+"permissions": ["tabs", "storage"]
+```
+
+The `theme` permission is a Firefox-only API. Builds for other browsers include the same popup UI but the `browser.theme.update()` call has no effect because the permission is absent from those manifests.
+
+## Supported browsers
+
+| Browser | Build target | Theme support | Status |
+|---|---|---|---|
+| Firefox | `firefox` | Full (`theme` permission) | Actively supported |
+| Chrome | `chrome` | None | Untested |
+| Opera | `opera` | None | Untested |
+| Edge | `edge` | None | Untested |
+
+## License
+
+ColorMe is released under the **MIT License**.

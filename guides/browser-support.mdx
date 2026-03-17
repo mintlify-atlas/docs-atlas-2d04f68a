@@ -1,0 +1,112 @@
+---
+title: "Browser support"
+description: "Supported browsers and feature availability"
+---
+
+ColorMe ships separate builds for four browsers. Browser-level frame theming depends on the `theme` permission, which only Firefox exposes via the WebExtension API.
+
+## Feature matrix
+
+| Browser | Build target | `theme` permission | Theme API | Status |
+|---------|-------------|-------------------|-----------|--------|
+| Firefox | `firefox` | Yes | `browser.theme.update()` | Fully supported |
+| Chrome | `chrome` | No | N/A | Partial |
+| Opera | `opera` | No | N/A | Partial |
+| Edge | `edge` | No | N/A | Untested |
+
+<Note>
+  Firefox is the recommended browser for ColorMe. It is the only browser whose manifest includes the `"theme"` permission, which is required for `browser.theme.update()` to change the browser chrome frame color.
+</Note>
+
+<Warning>
+  The Edge build has not been tested. Behavior may differ from the other builds. Refer to the [Microsoft Edge extension documentation](https://learn.microsoft.com/en-us/microsoft-edge/extensions-chromium/) before deploying to Edge.
+</Warning>
+
+## Browser details
+
+<Tabs>
+  <Tab title="Firefox">
+    Firefox is the primary supported browser. Its manifest includes the `"theme"` permission alongside `"tabs"` and `"storage"`:
+
+    ```json baseManifest_firefox.json
+    "permissions": ["tabs", "storage", "theme"]
+    ```
+
+    With this permission, `browser.theme.update(theme[mode])` applies the selected frame color directly to the browser chrome. All ColorMe features — color wheel, day/night toggle, and saved swatches — work as intended.
+
+    Firefox also uses a persistent background script (`"type": "module"`) rather than a service worker, which aligns with how ColorMe manages `localStorage`-backed theme state.
+  </Tab>
+  <Tab title="Chrome">
+    Chrome builds are available but the `"theme"` permission is absent from the Chrome manifest:
+
+    ```json baseManifest_chrome.json
+    "permissions": ["tabs", "storage"]
+    ```
+
+    Without `"theme"`, calls to `browser.theme.update()` have no effect on the browser frame. The popup background still updates via `document.body.style.backgroundColor = value` inside `setTheme`, so you can see the selected color reflected in the popup itself, but the browser toolbar and frame are unaffected.
+
+    Chrome uses a `service_worker` for its background script instead of a persistent script, which may affect `localStorage` availability in the background context.
+  </Tab>
+  <Tab title="Opera">
+    Opera is structurally identical to the Chrome build. The `"theme"` permission is not included, so browser-level frame color changes do not apply. Popup background updates via `document.body.style.backgroundColor` still work.
+  </Tab>
+  <Tab title="Edge">
+    An Edge build target exists in `package.json` but has not been tested. Edge is Chromium-based and shares the same manifest structure as Chrome, so it also lacks the `"theme"` permission. Full functionality is not guaranteed.
+  </Tab>
+</Tabs>
+
+## Build targets
+
+Each browser has three script variants defined in `package.json`:
+
+<CodeGroup>
+
+```bash Production build
+npm run build:firefox
+npm run build:chrome
+npm run build:opera
+npm run build:edge
+```
+
+```bash Development build (watch mode)
+npm run dev:firefox
+npm run dev:chrome
+npm run dev:opera
+npm run dev:edge
+```
+
+```bash Profile build
+npm run profile:firefox
+npm run profile:chrome
+npm run profile:opera
+npm run profile:edge
+```
+
+</CodeGroup>
+
+All build commands use `cross-env` to set `NODE_ENV` and `TARGET` environment variables consumed by the Webpack configuration. The `TARGET` value controls which base manifest is merged into the final `manifest.json`.
+
+To build all targets at once:
+
+```bash
+npm run build
+```
+
+This runs `build:chrome`, `build:firefox`, `build:opera`, and `build:edge` in sequence.
+
+## Why Firefox gets full support
+
+<CardGroup cols={2}>
+  <Card title="Theme permission" icon="shield-check">
+    Firefox exposes the `browser.theme` API to extensions that declare `"theme"` in their manifest permissions. No other browser in this build matrix does.
+  </Card>
+  <Card title="Persistent background script" icon="server">
+    Firefox runs the background script as a persistent module (`"type": "module"`), giving it reliable access to `localStorage` for seeding the `themes` object at startup.
+  </Card>
+  <Card title="WebExtension polyfill" icon="puzzle">
+    ColorMe uses `webextension-polyfill` to abstract browser differences. On Firefox, `browser.theme.update()` resolves correctly. On Chrome and Opera, the call is a no-op because the underlying API is unavailable.
+  </Card>
+  <Card title="Popup background fallback" icon="paintbrush">
+    On all browsers, `document.body.style.backgroundColor` is updated to the selected color inside `setTheme`, so the popup itself always reflects the chosen color regardless of whether the browser frame updates.
+  </Card>
+</CardGroup>

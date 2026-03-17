@@ -1,0 +1,179 @@
+---
+title: "Contributing"
+description: "How to set up a dev environment and contribute to ColorMe"
+---
+
+## Prerequisites
+
+- **Node.js** — version 16 or later recommended
+- **npm** or **Yarn** — the project uses Yarn in its documented scripts
+- A supported browser — **Firefox** is the primary development target; Chrome, Opera, and Edge are also supported
+
+## Setting up a dev environment
+
+<Steps>
+  <Step title="Fork and clone the repository">
+    ```bash
+    git clone https://github.com/ehcaw/colorme.git
+    cd colorme
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    <CodeGroup>
+
+    ```bash yarn
+    yarn install
+    ```
+
+    ```bash npm
+    npm install
+    ```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Start a live-reload dev server">
+    Run the dev script for your target browser. The build will watch for file changes and automatically reload the extension.
+
+    <CodeGroup>
+
+    ```bash yarn
+    yarn dev:firefox
+    ```
+
+    ```bash npm
+    npm run dev:firefox
+    ```
+
+    </CodeGroup>
+
+    <Tip>
+      Use `yarn dev:firefox` during development. Firefox has the most complete support for the `browser.theme` API, which ColorMe relies on to apply frame colors to the browser chrome.
+    </Tip>
+  </Step>
+
+  <Step title="Load the extension in your browser">
+    <Tabs>
+      <Tab title="Firefox">
+        1. Navigate to `about:debugging`.
+        2. Click **This Firefox** in the left sidebar.
+        3. Click **Load Temporary Add-on**.
+        4. Select any file inside `dev/firefox/` (for example `manifest.json`).
+      </Tab>
+      <Tab title="Chrome">
+        1. Navigate to `chrome://extensions`.
+        2. Enable **Developer mode** using the toggle in the top-right corner.
+        3. Click **Load unpacked**.
+        4. Select the `dev/chrome/` directory.
+      </Tab>
+      <Tab title="Opera">
+        1. Navigate to `chrome://extensions`.
+        2. Enable **Developer mode**.
+        3. Click **Load unpacked**.
+        4. Select the `dev/opera/` directory.
+      </Tab>
+      <Tab title="Edge">
+        Follow the Microsoft Edge extensions guide at [docs.microsoft.com](https://docs.microsoft.com/en-us/microsoft-edge/extensions/guides/adding-and-removing-extensions).
+        Load the unpacked extension from `dev/edge/`.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Make your changes">
+    Edit source files under `src/`. Webpack's watch mode will recompile on save and the extension reloader plugin will reload the extension in the browser automatically.
+  </Step>
+
+  <Step title="Lint before submitting">
+    <CodeGroup>
+
+    ```bash yarn
+    yarn lint-fix
+    ```
+
+    ```bash npm
+    npm run lint-fix
+    ```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Open a pull request">
+    Push your branch and open a pull request or issue at [github.com/ehcaw/colorme](https://github.com/ehcaw/colorme).
+  </Step>
+</Steps>
+
+## Code style
+
+### ESLint
+
+<Note>
+  The project uses `eslint-config-airbnb` as the base ruleset, extended with `@typescript-eslint` for TypeScript-aware rules and `eslint-config-prettier` to disable any formatting rules that conflict with Prettier. `eslint-plugin-prettier` surfaces Prettier violations as ESLint errors.
+</Note>
+
+```json .eslintrc
+{
+  "extends": "react-app",
+  "globals": {
+    "chrome": "readonly"
+  }
+}
+```
+
+The `chrome` global is marked `readonly` so ESLint does not flag references to the `chrome.*` namespace as undefined variables.
+
+ESLint is also wired into Webpack as `eslint-webpack-plugin` with `fix: true`, so auto-fixable issues are corrected on every build.
+
+### Prettier
+
+```json .prettierrc
+{
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "requirePragma": false,
+  "arrowParens": "always"
+}
+```
+
+| Option | Value | Effect |
+|---|---|---|
+| `singleQuote` | `true` | Use `'` instead of `"` for strings |
+| `trailingComma` | `"es5"` | Trailing commas where valid in ES5 (objects, arrays) |
+| `requirePragma` | `false` | Format all files, not just those with a `// @format` header |
+| `arrowParens` | `"always"` | Always wrap arrow function parameters: `(x) => x` |
+
+## TypeScript configuration
+
+The project targets ES2017 with strict null checking and implicit-any errors enabled:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    "target": "es2017",
+    "module": "commonjs",
+    "jsx": "react",
+    "baseUrl": "./src",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "typeRoots": ["node_modules/@types", "./src/types"]
+  },
+  "exclude": ["dist", "dev", "temp"]
+}
+```
+
+Key points:
+
+- **`noImplicitAny`** and **`strictNullChecks`** are both `true` — every value must be explicitly typed or inferable; `null` and `undefined` are not assignable to other types without a check.
+- **`baseUrl: "./src"`** combined with the `paths` map lets you write `import storage from 'utils/storage'` instead of a relative path.
+- The `src/types/` directory is included in `typeRoots`, making `EXTMessage`, `EXTResponse`, and other ambient declarations available globally without an explicit import.
+- The `dist/`, `dev/`, and `temp/` output directories are excluded from compilation.
+
+## Reporting issues and questions
+
+Open a GitHub issue at [github.com/ehcaw/colorme](https://github.com/ehcaw/colorme). The project is licensed under the MIT license.

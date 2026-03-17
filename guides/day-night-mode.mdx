@@ -1,0 +1,134 @@
+---
+title: "Day and night mode"
+description: "Switch between light and dark browser themes"
+---
+
+ColorMe maintains two independent theme slots — **day** (light) and **night** (dark) — so you can have a separate frame color for each context and switch between them with a single toggle.
+
+## The `themes` object
+
+Both slots are held in a module-level `themes` map defined in `background_script.ts`. Each slot is typed as `ThemeType`:
+
+```typescript background_script.ts
+type ThemeColor = string;
+
+export interface ThemeType {
+  colors: {
+    frame: ThemeColor | undefined;
+  };
+}
+
+export const themes: { [key: string]: ThemeType } = {
+  day: {
+    colors: {
+      frame: storageAvailable('localStorage')
+        ? localStorage.getItem('day') ?? undefined
+        : '#ffffff', // white
+    },
+  },
+  night: {
+    colors: {
+      frame: storageAvailable('localStorage')
+        ? localStorage.getItem('night') ?? ''
+        : '000000', // black
+    },
+  },
+};
+```
+
+At extension load time, each slot seeds itself from `localStorage`. If no value has been saved yet, `day` falls back to `#ffffff` and `night` falls back to an empty string (which the browser treats as black).
+
+## Toggling between modes
+
+The toggle in the popup is a styled checkbox:
+
+```tsx Popup.tsx
+<label className="switch">
+  <input id="checkbox" type="checkbox" onClick={onClick} />
+  <span className="slider round" />
+</label>
+```
+
+The `onClick` handler flips the mode and applies the stored color for the new slot:
+
+```tsx Popup.tsx
+const onClick = () => {
+  setMode((prevMode) => {
+    const newMode = prevMode === 'day' ? 'night' : 'day';
+    changeMode(themes, newMode);
+    setHex((themes[newMode] as any).colors.frame || '#FFFFFF');
+    document.body.style.backgroundColor = (themes[newMode] as any).colors.frame;
+    storage
+      .set({ mode: newMode })
+      .then(() => console.log('mode updated in storage', newMode))
+      .catch(() => console.log('error setting mode in storage'));
+    return newMode;
+  });
+};
+```
+
+`changeMode` calls `browser.theme.update(theme[mode])` to apply the stored frame color for the new mode immediately.
+
+## Mode label
+
+The UI renders the active mode as a human-readable label next to the toggle:
+
+```tsx Popup.tsx
+{mode && <p>{mode == 'day' ? 'light' : 'dark'}</p>}
+```
+
+The label shows **light** when the day slot is active and **dark** when the night slot is active.
+
+## How mode persists
+
+The current mode is saved via `webextension-polyfill`'s storage API, which prefers `storage.sync` and falls back to `storage.local`:
+
+```typescript storage.ts
+import { storage } from 'webextension-polyfill';
+
+export default storage.sync ? storage.sync : storage.local;
+```
+
+On every toggle, `storage.set({ mode: newMode })` writes the new value. On popup open, the saved mode is read back:
+
+```tsx Popup.tsx
+const result = await storage.get('mode');
+const fetchedMode = result.mode || 'day'; // defaults to 'day' if nothing stored
+```
+
+## Switching modes step-by-step
+
+<Steps>
+  <Step title="Open the popup">
+    The popup reads the saved mode from storage and pre-fills the color wheel with the matching frame color.
+  </Step>
+  <Step title="Toggle the switch">
+    Click the toggle. The mode flips between `day` and `night`. The wheel and popup background immediately reflect the color stored for the new slot.
+  </Step>
+  <Step title="Pick a color for this mode">
+    Drag the color wheel handle to choose a new frame color. The change is applied to the browser frame in real time and written to the current mode's slot in storage.
+  </Step>
+  <Step title="Toggle back anytime">
+    Switching back restores the previously saved color for the other slot without losing the color you just set.
+  </Step>
+</Steps>
+
+<Tip>
+  Day and night modes each remember their own color independently. You can set a crisp white frame for daytime work and a deep charcoal for night reading, and ColorMe will restore the correct color every time you toggle.
+</Tip>
+
+<Note>
+  Firefox includes `"theme"` in its manifest permissions, which allows `browser.theme.update()` to change the browser chrome frame color:
+
+  ```json baseManifest_firefox.json
+  "permissions": ["tabs", "storage", "theme"]
+  ```
+
+  The Chrome manifest omits this permission:
+
+  ```json baseManifest_chrome.json
+  "permissions": ["tabs", "storage"]
+  ```
+
+  Without the `theme` permission, `browser.theme.update()` has no effect on the browser frame. The popup background color still updates via `document.body.style.backgroundColor`, but the actual browser chrome is unchanged. Firefox is the fully supported browser for this feature.
+</Note>

@@ -1,0 +1,267 @@
+---
+title: "Project structure"
+description: "How the ColorMe codebase is organized"
+---
+
+The ColorMe repository follows a source-in-`src/`, output-in-`dev/` convention. Webpack reads `src/`, compiles each entry point, and writes browser-specific bundles under `dev/{browser}/` during development or `dist/{browser}/` for distribution.
+
+## Directory layout
+
+```
+colorme/
+├── src/
+│   ├── popup/                     # Extension popup UI (React)
+│   │   ├── Popup.tsx              # Main popup component
+│   │   ├── ColorTable.tsx         # Saved color swatches display
+│   │   ├── background_script.ts   # Theme types, themes object, setTheme, updateColor, changeMode
+│   │   ├── index.tsx              # Popup entry point
+│   │   ├── index.html             # Popup HTML template
+│   │   └── popup.css              # Popup styles
+│   ├── background/                # Background service worker
+│   │   └── index.ts
+│   ├── content/                   # Content scripts injected into pages
+│   │   ├── index.tsx
+│   │   └── messageListener.ts
+│   ├── components/                # Shared React components
+│   │   └── Button/
+│   ├── utils/                     # Cross-context utilities
+│   │   ├── storage.ts             # webextension-polyfill storage wrapper
+│   │   └── sendMessages.ts        # Message-passing helpers
+│   ├── types/                     # Global TypeScript type declarations
+│   │   ├── message.d.ts
+│   │   ├── response.d.ts
+│   │   └── openControl.d.ts
+│   ├── assets/                    # Icons and static assets
+│   ├── _locales/                  # i18n locale files
+│   ├── baseManifest_chrome.json   # Chrome manifest base
+│   ├── baseManifest_firefox.json  # Firefox manifest base
+│   ├── baseManifest_opera.json    # Opera manifest base
+│   └── baseManifest_edge.json     # Edge manifest base
+├── dev/                           # Built output (development mode)
+│   ├── chrome/
+│   ├── firefox/
+│   ├── opera/
+│   └── edge/
+├── dist/                          # Built output (production / upload mode)
+│   ├── chrome/
+│   ├── firefox/
+│   ├── opera/
+│   └── edge/
+├── webpack.config.ts              # Main Webpack configuration
+├── webpack.config.utils.ts        # Webpack plugin and entry-point helpers
+├── tsconfig.json
+├── package.json
+├── .eslintrc
+└── .prettierrc
+```
+
+## Key directories and files
+
+<AccordionGroup>
+  <Accordion title="popup/ — extension popup UI">
+    The popup is a React single-page application rendered inside the browser action popup window.
+
+    **`Popup.tsx`** is the root component. It holds three state variables — `mode` (`'day'` or `'night'`), the currently selected `hex` color string, and `savedColors` (a `string[]` pulled from extension storage). On mount it reads the persisted mode from storage and initialises both the color wheel and the `document.body` background color accordingly.
+
+    The color wheel is provided by `reinvented-color-wheel`. When the user picks a new color, `onChange` fires, updates `hex`, and a `useEffect` calls `setTheme` to apply the new frame color through the `browser.theme` API. A separate `useEffect` tracks the CMYK `k` channel of the current hex to flip the `--flip-color` CSS custom property between `white` and `black` so overlay text stays legible.
+
+    **`background_script.ts`** exports the theme state and the three functions the popup uses to drive the browser theme API:
+
+    ```typescript background_script.ts
+    export interface ThemeType {
+      colors: {
+        frame: ThemeColor | undefined;
+      };
+    }
+
+    // Day/night theme defaults — reads from localStorage on load
+    export const themes: { [key: string]: ThemeType } = {
+      day:   { colors: { frame: localStorage.getItem('day')   ?? '#ffffff' } },
+      night: { colors: { frame: localStorage.getItem('night') ?? '000000'  } },
+    };
+
+    // Update the in-memory theme object for the active mode
+    export function updateColor(
+      theme: { [key: string]: any },
+      value: string,
+      mode: string
+    ): void
+
+    // Switch between day and night by calling browser.theme.update
+    export async function changeMode(
+      theme: { [key: string]: any },
+      mode: string
+    ): Promise<void>
+
+    // Apply a new color to the current mode; no-ops if unchanged
+    export async function setTheme(
+      theme: { [key: string]: any },
+      value: string,
+      mode: string
+    ): Promise<void>
+    ```
+
+    **`ColorTable.tsx`** renders saved color swatches that the user accumulates by clicking the **+** button in the popup. Swatches are persisted in extension storage as a JSON-serialised `string[]` under the key `savedColors`.
+  </Accordion>
+
+  <Accordion title="background/ — service worker">
+    `background/index.ts` instantiates the `Background` class, which registers four event listeners via the `webextension-polyfill` API:
+
+    ```typescript background/index.ts
+    class Background {
+      // Fires once when the extension is installed
+      onInstalled: () => void
+
+      // Handles runtime messages — switches on message.type
+      onMessage: (message: EXTMessage, sender: Runtime.MessageSender) => Promise<true | Error>
+
+      // Fires when a new tab is created
+      onCreatedTab: (tab: Tabs.Tab) => void
+
+      // Fires when a tab's status or URL changes
+      onUpdatedTab: (tabId: number, changeInfo: Tabs.OnUpdatedChangeInfoType, tab: Tabs.Tab) => void
+    }
+
+    export const background = new Background();
+    ```
+
+    The class also exposes helpers — `getURLFromTab`, `openNewTab`, `closeTab`, and `sendMessage` — for future feature work.
+
+    On Chrome, the background script runs as a Manifest V3 service worker (`"service_worker": "background/background.js"`). On Firefox it runs as a module-type background script (`"type": "module"`).
+  </Accordion>
+
+  <Accordion title="content/ — injected content scripts">
+    Content scripts run in the context of every HTTP/HTTPS page (`matches: ["http://*/*", "https://*/*"]`).
+
+    **`content/index.tsx`** mounts a minimal React component into a `<div id="my-extension-root">` element it appends to `document.body`, then registers the message listener:
+
+    ```typescript content/index.tsx
+    runtime.onMessage.addListener(MessageListener);
+    ```
+
+    **`messageListener.ts`** exports `onRequest`, which handles incoming `EXTMessage` objects dispatched from the popup or background script:
+
+    ```typescript content/messageListener.ts
+    export const onRequest = async (
+      msg: EXTMessage,
+      sender: Runtime.SendMessageOptionsType
+    ): Promise<EXTResponse | undefined> => {
+      switch (msg.type) {
+        case 'CHANGE_COLOR': {
+          // Directly mutates the page background
+          document.body.style.background = msg?.data?.color;
+          break;
+        }
+        default:
+          return { type: 'SUCCESS' };
+      }
+    };
+    ```
+
+    Currently the only handled message type is `'CHANGE_COLOR'`.
+  </Accordion>
+
+  <Accordion title="utils/ — cross-context utilities">
+    **`storage.ts`** provides a single storage handle that prefers `storage.sync` (which roams across signed-in browser profiles) and falls back to `storage.local` when sync is unavailable:
+
+    ```typescript utils/storage.ts
+    import { storage } from 'webextension-polyfill';
+
+    export default storage.sync ? storage.sync : storage.local;
+    ```
+
+    Import this default export anywhere you need to read or write persistent extension data.
+
+    **`sendMessages.ts`** wraps the `webextension-polyfill` messaging APIs into three typed helpers:
+
+    ```typescript utils/sendMessages.ts
+    // Send a message to the background script
+    export const sendMessage = (
+      msg: EXTMessage,
+      options?: Runtime.SendMessageOptionsType
+    ): Promise<EXTResponse>
+
+    // Send a message to the content script in a specific tab
+    export const sendMessageToTab = <T = any>(
+      tab: Tabs.Tab,
+      msg: EXTMessage<T>,
+      options?: Tabs.SendMessageOptionsType
+    ): Promise<Response>
+
+    // Query the active tab in the current window, then send a message to it
+    export const sendMessageToActiveTab = async <T = any>(
+      msg: EXTMessage<T>,
+      options?: Tabs.SendMessageOptionsType
+    ): Promise<Response>
+    ```
+  </Accordion>
+
+  <Accordion title="types/ — global TypeScript declarations">
+    These `.d.ts` files are ambient — they add global types without an explicit import.
+
+    **`message.d.ts`** defines the message envelope used across all extension contexts:
+
+    ```typescript types/message.d.ts
+    declare type EXTMessageType = 'CHANGE_COLOR';
+
+    declare type EXTMessage<T = any> = {
+      type: EXTMessageType;
+      data?: T;
+    };
+    ```
+
+    **`response.d.ts`** defines the standard response envelope:
+
+    ```typescript types/response.d.ts
+    declare type EXTResponseType =
+      | 'SUCCESS'
+      | 'FAILED'
+      | 'PENDING'
+      | 'UNAUTHORIZED'
+      | 'AUTHENTICATED';
+
+    declare type EXTResponse<T = any> = {
+      type: EXTResponseType;
+      data?: T;
+    };
+    ```
+
+    `typeRoots` in `tsconfig.json` includes `./src/types`, so these declarations are available globally across the entire project without needing an import.
+  </Accordion>
+</AccordionGroup>
+
+## Manifest base files
+
+Each browser target has its own manifest base file under `src/`. Webpack picks the correct one at build time using `WebpackExtensionManifestPlugin`, reading the `TARGET` environment variable set by `cross-env`.
+
+| File | Browser | Background execution model | Notable permissions |
+|---|---|---|---|
+| `baseManifest_chrome.json` | Chrome | Service worker (`service_worker`) | `tabs`, `storage` |
+| `baseManifest_firefox.json` | Firefox | Module script (`type: module`) | `tabs`, `storage`, `theme` |
+| `baseManifest_opera.json` | Opera | — | — |
+| `baseManifest_edge.json` | Edge | — | — |
+
+<Note>
+Only Chrome and Firefox manifests are in this repository. Opera and Edge manifests follow the same pattern but are generated during the build.
+</Note>
+
+## Path aliases
+
+`webpack.config.utils.ts` registers path aliases under `resolve.alias`, mirroring the TypeScript paths in `tsconfig.json`:
+
+```typescript webpack.config.utils.ts
+alias: {
+  utils:      './src/utils/',
+  popup:      './src/popup/',
+  background: './src/background/',
+  options:    './src/options/',
+  content:    './src/content/',
+  assets:     './src/assets/',
+  components: './src/components/',
+  types:      './src/types/',
+  hooks:      './src/hooks/',
+  '@redux':   './src/@redux/',
+}
+```
+
+Use these aliases in import statements instead of relative paths, for example `import storage from 'utils/storage'`.

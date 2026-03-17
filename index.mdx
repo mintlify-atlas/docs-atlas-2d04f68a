@@ -1,97 +1,79 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "ColorMe"
+description: "Customize your browser's theme with any color you want — instantly, with day and night mode support."
 ---
 
-## Setting up
+<div style={{background: "linear-gradient(135deg, #0665fc 0%, #04a4ec 100%)", borderRadius: "8px", padding: "48px 40px", marginBottom: "32px", color: "white"}}>
+  <h1 style={{fontSize: "40px", fontWeight: "700", fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif", margin: "0 0 16px 0", color: "white"}}>Color Me!</h1>
+  <p style={{fontSize: "18px", fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif", margin: "0 0 32px 0", opacity: 0.9}}>A browser extension that puts a full color wheel at your fingertips. Pick any color, switch between light and dark modes, and save your favorite palettes — all in real time.</p>
+  <div style={{display: "flex", gap: "12px", flexWrap: "wrap"}}>
+    <a href="/installation" style={{background: "white", color: "#0665fc", padding: "10px 24px", fontWeight: "700", fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif", textDecoration: "none", fontSize: "14px"}}>Get Started</a>
+    <a href="/quickstart" style={{background: "transparent", color: "white", padding: "10px 24px", fontWeight: "700", fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif", textDecoration: "none", fontSize: "14px", border: "2px solid white"}}>Quickstart</a>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+## What is ColorMe?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+ColorMe is a browser extension that lets you take full control of your browser's visual theme. Using an interactive color wheel, you can choose any hex color and apply it to your browser frame instantly — no restart needed.
 
-## Make it yours
+The extension stores your preferences using the browser's built-in sync storage, so your color choices persist across sessions and devices.
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Interactive Color Wheel" icon="palette">
+    Pick any color from a 300px HSL color wheel with real-time browser theme updates as you drag.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Day & Night Mode" icon="moon">
+    Maintain separate color themes for light and dark modes, toggled with a single switch.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Saved Color Swatches" icon="bookmark">
+    Save your favorite colors as quick-access swatches stored in browser sync storage.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Cross-Browser Support" icon="globe">
+    Works on Firefox (primary), Chrome, Opera, and Edge with per-browser build targets.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## How it works
 
-Everything you need to create world-class documentation.
+ColorMe is built with React and TypeScript, bundled with Webpack for each target browser. The popup UI hosts a color wheel that sends theme updates directly to the browser via the WebExtensions `browser.theme.update()` API.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Install the extension">
+    Build for your browser and load the unpacked extension from the `dev/` directory.
+  </Step>
+  <Step title="Open the popup">
+    Click the ColorMe icon in your browser toolbar to open the color picker popup.
+  </Step>
+  <Step title="Pick a color">
+    Drag the handle on the color wheel to select any hue and saturation. The browser theme updates instantly.
+  </Step>
+  <Step title="Toggle day/night">
+    Use the toggle switch to switch between your light (day) and dark (night) color themes.
+  </Step>
+  <Step title="Save your favorites">
+    Click the **+** button to save the current color as a swatch for quick access later.
+  </Step>
+</Steps>
 
-## Need inspiration?
+## Quick links
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Build and load the extension in your browser
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Up and running in under 5 minutes
+  </Card>
+  <Card title="Color Wheel Guide" icon="circle-half-stroke" href="/guides/using-the-color-wheel">
+    How to use the color picker
+  </Card>
+  <Card title="Day & Night Mode" icon="sun" href="/guides/day-night-mode">
+    Managing light and dark themes
+  </Card>
+  <Card title="Saving Colors" icon="floppy-disk" href="/guides/saving-colors">
+    Build your personal color palette
+  </Card>
+  <Card title="Browser Support" icon="browser" href="/guides/browser-support">
+    Supported browsers and limitations
+  </Card>
+</CardGroup>

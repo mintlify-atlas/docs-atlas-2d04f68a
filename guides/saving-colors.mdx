@@ -1,0 +1,125 @@
+---
+title: "Saving colors"
+description: "Build a palette of favorite colors for quick reuse"
+---
+
+ColorMe lets you save any color you've dialed in on the wheel to a persistent palette. Saved colors appear as clickable swatches in the popup so you can reapply a favorite in one click.
+
+## Saving a color
+
+Click the **+** button next to the day/night toggle to append the current hex value to your saved palette:
+
+```tsx Popup.tsx
+<button
+  className="border-radius:4px align-items: right"
+  onClick={saveColor}
+>
+  <span>&#43;</span>
+</button>
+```
+
+The `saveColor` function reads the existing list from storage, pushes the new hex string, and writes the updated array back:
+
+```tsx Popup.tsx
+const saveColor = async () => {
+  const result = await storage.get('savedColors');
+  let savedColors = JSON.parse(result.savedColors);
+  savedColors.push(hex);
+  storage.set({ savedColors: JSON.stringify(savedColors) });
+};
+```
+
+Colors are persisted as a JSON-stringified array of hex strings (e.g. `["#1a2b3c","#ff6600"]`).
+
+## Loading saved colors on popup open
+
+When the popup opens, the saved list is fetched from storage and parsed with a hex regex:
+
+```tsx Popup.tsx
+const getSavedColors = async () => {
+  let result = await storage.get('savedColors');
+  if (result == null) {
+    setSavedColors([]);
+  } else {
+    const colorRegex = /#[0-9a-fA-F]{6}/g;
+    setSavedColors(result.savedColors.match(colorRegex));
+  }
+};
+```
+
+<Note>
+  The regex `/#[0-9a-fA-F]{6}/g` extracts every valid six-digit hex color from the stored JSON string. This means the raw storage value doesn't need to be a perfectly formed JSON array — any string that contains hex codes in the form `#RRGGBB` will be parsed correctly. Invalid or malformed entries are silently discarded.
+</Note>
+
+## The `ColorTable` component
+
+The `ColorTable` component receives the parsed color list and renders a horizontally scrollable row of `ColorButton` swatches:
+
+```typescript ColorTable.tsx
+interface ColorTableProps {
+  colors: string[];
+  mode: string;
+}
+
+interface ColorButtonProps {
+  backgroundColor: string;
+  index: number;
+  mode: string;
+}
+```
+
+The component re-renders whenever `props.colors` changes. A `refreshKey` state variable is incremented by `refreshColors()` after a swatch is clicked, forcing a re-render of the swatch row:
+
+```tsx ColorTable.tsx
+const [refreshKey, setRefreshKey] = useState<number>(0);
+
+const refreshColors = () => {
+  setRefreshKey((prevRefreshKey) => prevRefreshKey + 1);
+};
+```
+
+## Applying a saved color
+
+Each `ColorButton` is styled with its stored hex color as its background:
+
+```tsx ColorTable.tsx
+<button
+  className="savedColors"
+  style={{ backgroundColor: props.backgroundColor }}
+  onClick={() => loadSavedColor(themes, props.backgroundColor, mode)}
+/>
+```
+
+Clicking a swatch calls `loadSavedColor`, which delegates to `setTheme` to apply the color immediately to the browser frame and update the current mode's slot:
+
+```tsx ColorTable.tsx
+function loadSavedColor(
+  theme: { [key: string]: ThemeType },
+  color: string,
+  mode: string
+) {
+  setTheme(themes, color, mode);
+  props.refreshColors();
+}
+```
+
+## Full palette workflow
+
+<Steps>
+  <Step title="Pick a color you want to keep">
+    Drag the color wheel handle until the hex display shows the color you want.
+  </Step>
+  <Step title="Click the + button">
+    The current hex is appended to your saved palette and persisted to browser storage immediately.
+  </Step>
+  <Step title="Find it in the swatch row">
+    The new swatch appears at the end of the horizontal row beneath the wheel. Scroll the row if you have many saved colors.
+  </Step>
+  <Step title="Click a swatch to reapply">
+    Clicking any swatch calls `setTheme` and applies that color to the browser frame for the active mode right away.
+  </Step>
+</Steps>
+
+<Tip>
+  Saved colors are applied to whichever mode is currently active (day or night). To build separate palettes, switch to day mode and save your light-theme favorites, then switch to night mode and save your dark-theme favorites. The color wheel remembers the last-used color per mode, so toggling back and forth won't overwrite your saved swatches.
+</Tip>

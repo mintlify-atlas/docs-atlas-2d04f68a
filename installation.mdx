@@ -1,0 +1,139 @@
+---
+title: "Installation"
+description: "Build and load ColorMe into your browser"
+---
+
+ColorMe is distributed as source code. You build it locally with Webpack, then load the output directory as an unpacked extension in your browser.
+
+<Note>
+  Firefox is the primary supported browser and has the richest theme support. The Firefox manifest declares the `theme` permission, which is required for `browser.theme.update()` to repaint the browser chrome. Builds for other browsers produce a functional popup but live theme changes will have no effect.
+</Note>
+
+## Build the extension
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/ehcaw/colorme.git
+    cd colorme
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    <CodeGroup>
+
+    ```bash npm
+    npm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Build for your target browser">
+    Replace `{browser}` with one of the available targets: `chrome`, `firefox`, `opera`, or `edge`.
+
+    <CodeGroup>
+
+    ```bash npm
+    npm run build:firefox
+    ```
+
+    ```bash yarn
+    yarn build:firefox
+    ```
+
+    </CodeGroup>
+
+    Webpack compiles the extension into `colorme/dev/{browser}/`. Available build targets are listed below.
+
+    | Target | Output directory | Theme API support |
+    |---|---|---|
+    | `firefox` | `dev/firefox` | Yes (`theme` permission included) |
+    | `chrome` | `dev/chrome` | No |
+    | `opera` | `dev/opera` | No |
+    | `edge` | `dev/edge` | No |
+  </Step>
+</Steps>
+
+## Load the extension in your browser
+
+<Tabs>
+  <Tab title="Firefox">
+    <Steps>
+      <Step title="Open the debugging page">
+        In the Firefox address bar, navigate to:
+
+        ```
+        about:debugging
+        ```
+      </Step>
+
+      <Step title="Load the extension">
+        Click **This Firefox** in the left sidebar, then click **Load Temporary Add-on...**
+      </Step>
+
+      <Step title="Select the built extension">
+        In the file browser, open the `colorme/dev/firefox` directory and select any file inside it (for example, `manifest.json`). Firefox loads the extension and it appears in the temporary extensions list.
+      </Step>
+    </Steps>
+
+    <Note>
+      Temporary add-ons are removed when Firefox is closed. To keep ColorMe installed across sessions, package and sign it through [Firefox Add-on Developer Hub](https://addons.mozilla.org/developers/).
+    </Note>
+  </Tab>
+
+  <Tab title="Chrome & Opera">
+    <Steps>
+      <Step title="Open the extensions page">
+        In the Chrome or Opera address bar, navigate to:
+
+        ```
+        chrome://extensions
+        ```
+      </Step>
+
+      <Step title="Enable developer mode">
+        Toggle the **Developer mode** switch in the top-right corner of the extensions page.
+      </Step>
+
+      <Step title="Load the unpacked extension">
+        Click **Load unpacked extension...** and select the appropriate output directory:
+
+        - Chrome: `colorme/dev/chrome`
+        - Opera: `colorme/dev/opera`
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Edge">
+    <Warning>
+      The Edge build (`yarn build:edge`) compiles without errors, but it has not been tested. Live theme changes will not work because the Edge manifest does not include the `theme` permission. Follow the Microsoft documentation for loading the extension.
+    </Warning>
+
+    Refer to the official Microsoft documentation for instructions on loading an unpacked extension in Edge:
+
+    [Adding and removing extensions — Microsoft Edge](https://docs.microsoft.com/en-us/microsoft-edge/extensions/guides/adding-and-removing-extensions)
+  </Tab>
+</Tabs>
+
+## Development mode
+
+To enable live reload while developing, use the `dev` scripts instead of `build`:
+
+<CodeGroup>
+
+```bash npm
+npm run dev:firefox
+```
+
+```bash yarn
+yarn dev:firefox
+```
+
+</CodeGroup>
+
+Webpack watches for file changes and reloads the extension automatically. The same browser targets (`chrome`, `firefox`, `opera`, `edge`) are available.

@@ -1,0 +1,212 @@
+---
+title: "Building"
+description: "Build, develop, profile, and package ColorMe for each browser"
+---
+
+All build commands are driven by Webpack. `cross-env` sets `NODE_ENV` and `TARGET` environment variables, and `webpack.config.ts` switches its plugin set and optimisation config based on those values. The output directory depends on the build mode:
+
+| Mode | `NODE_ENV` | Output directory |
+|---|---|---|
+| Development | `development` | `dev/{browser}/` |
+| Production | `production` | `temp/{browser}/` then zipped to `dist/{browser}/` |
+| Upload | `upload` | `dist/{browser}/` (minified, not zipped) |
+| Profile | `profile` | `dev/{browser}/` (bundle analysis server) |
+
+<Note>
+Built output goes to `dev/{browser}/` during development. Load this directory directly in your browser's extension manager.
+</Note>
+
+## Script reference
+
+| Category | Scripts |
+|---|---|
+| Development (live reload) | `dev:chrome`, `dev:firefox`, `dev:opera`, `dev:edge` |
+| Production build (zipped) | `build:chrome`, `build:firefox`, `build:opera`, `build:edge`, `build` |
+| Profile (bundle analysis) | `profile:chrome`, `profile:firefox`, `profile:opera`, `profile:edge` |
+| Upload (store submission) | `upload:chrome`, `upload:firefox`, `upload:opera`, `upload:edge`, `upload` |
+| Lint | `lint-fix` |
+
+## Development mode
+
+Development mode enables source maps, Webpack's watch mode, and the `webpack-ext-reloader-mv3` plugin, which reloads the extension in the browser automatically when source files change.
+
+<CodeGroup>
+
+```bash yarn
+yarn dev:chrome
+yarn dev:firefox
+yarn dev:opera
+yarn dev:edge
+```
+
+```bash npm
+npm run dev:chrome
+npm run dev:firefox
+npm run dev:opera
+npm run dev:edge
+```
+
+</CodeGroup>
+
+The extension reloader listens on port `9090` and is configured to reload the page along with the extension:
+
+```typescript webpack.config.utils.ts
+new ExtReloader({
+  port: 9090,
+  reloadPage: true,
+  entries: {
+    contentScript: ['content'],
+    background: 'background',
+    extensionPage: ['popup', 'options'],
+  },
+})
+```
+
+When `NODE_ENV=development`, Webpack also adds `devtool: 'source-map'` and sets `watch: true` with a `pollInterval` of 1000 ms.
+
+## Production build
+
+Production mode minifies output with TerserPlugin (parallel, no comments) and creates a ready-to-submit `.zip` archive under `dist/{browser}/` using `zip-webpack-plugin`.
+
+<CodeGroup>
+
+```bash yarn
+# Build a single browser
+yarn build:chrome
+yarn build:firefox
+yarn build:opera
+yarn build:edge
+
+# Build all four browsers sequentially
+yarn build
+```
+
+```bash npm
+npm run build:chrome
+npm run build:firefox
+npm run build:opera
+npm run build:edge
+
+npm run build
+```
+
+</CodeGroup>
+
+The zip plugin writes to `dist/{browser}/{browser}.zip`:
+
+```typescript webpack.config.utils.ts
+new ZipPlugin({
+  path: path.resolve(process.cwd(), `${outputDir}/${browserDir}`),
+  filename: browserDir,
+  extension: 'zip',
+  fileOptions: {
+    mtime: new Date(),
+    mode: 0o100664,
+    compress: true,
+    forceZip64Format: false,
+  },
+})
+```
+
+## Profile mode
+
+Profile mode opens a `webpack-bundle-analyzer` server (`analyzerMode: 'server'`) so you can inspect bundle composition interactively. Source maps are included.
+
+<CodeGroup>
+
+```bash yarn
+yarn profile:chrome
+yarn profile:firefox
+yarn profile:opera
+yarn profile:edge
+```
+
+```bash npm
+npm run profile:chrome
+npm run profile:firefox
+npm run profile:opera
+npm run profile:edge
+```
+
+</CodeGroup>
+
+After the build finishes, Webpack starts a local HTTP server and opens the bundle report in your default browser automatically.
+
+## Upload mode
+
+Upload mode produces minified output without creating a zip archive, targeting direct submission to a browser store's upload API.
+
+<CodeGroup>
+
+```bash yarn
+# Upload a single browser
+yarn upload:chrome
+yarn upload:firefox
+yarn upload:opera
+yarn upload:edge
+
+# Upload all four browsers sequentially
+yarn upload
+```
+
+```bash npm
+npm run upload:chrome
+npm run upload:firefox
+npm run upload:opera
+npm run upload:edge
+
+npm run upload
+```
+
+</CodeGroup>
+
+## How TARGET selects the manifest
+
+`webpack.config.utils.ts` imports all four manifest base files and stores them in a map keyed by browser name. `WebpackExtensionManifestPlugin` reads `EnvConfig.TARGET` at build time to pick the correct base:
+
+```typescript webpack.config.utils.ts
+const baseManifest = {
+  chrome:  baseManifestChrome,
+  firefox: baseManifestFirefox,
+  opera:   baseManifestOpera,
+  edge:    baseManifestEdge,
+};
+
+// In getExtensionManifestPlugins():
+new WebpackExtensionManifestPlugin({
+  config: { base: (baseManifest as any)[EnvConfig.TARGET] },
+})
+```
+
+When you run `yarn build:firefox`, `cross-env` sets `TARGET=firefox` before invoking Webpack, so `EnvConfig.TARGET` resolves to `'firefox'` and the Firefox manifest is used.
+
+## Webpack entry points
+
+Four entry points are compiled for every browser target:
+
+```typescript webpack.config.utils.ts
+{
+  popup:      ['src/popup/index.tsx'],
+  options:    ['src/options/options.tsx'],
+  content:    ['src/content/index.tsx'],
+  background: ['src/background/index.ts'],
+}
+```
+
+Output files follow the pattern `{entryName}/{entryName}.js` within the target browser directory.
+
+## Linting
+
+<CodeGroup>
+
+```bash yarn
+yarn lint-fix
+```
+
+```bash npm
+npm run lint-fix
+```
+
+</CodeGroup>
+
+This runs `eslint --fix` over all `.js`, `.jsx`, `.ts`, and `.tsx` files under `src/`. ESLint is also integrated as a Webpack plugin (`eslint-webpack-plugin` with `fix: true`), so lint errors surface during every build.
